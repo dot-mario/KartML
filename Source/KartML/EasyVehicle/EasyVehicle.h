@@ -35,7 +35,7 @@ public:
 	UPROPERTY(Replicated)
 	TArray<FRotator> ServerRotations;
 
-	float PositionUpdateInterval = 0.01;  // 0.1ÃÊ¸¶´Ù ¾÷µ¥ÀÌÆ®
+	float PositionUpdateInterval = 0.01;  // 0.1ì´ˆë§ˆë‹¤ ì—…ë°ì´íŠ¸
 	float TimeSinceLastUpdate = 0.0f;
 
 	void DrawDebugPositions();
