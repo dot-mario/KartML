@@ -17,14 +17,19 @@ struct FLearningData
 	FVector LinearAcc;
 	FVector AngularVel;
 	FVector AngularAcc;
-	FVector Posdiff; // vel * delta t 
-	FVector Anglediff; // angvel * delta t 
+	FVector VelmulDelta; // vel * delta t 
+	FVector AngvelmulDelta; // angvel * delta t 
+	FVector GTruthPosDiff;
+	FVector GTruthRotDiff;
 	//bool bDriftStatus;
+
+	// Infeasible properties
+	// Velocity >> z, Angular >> x,y
 };
 
 struct FOutputFeatures
 {
-	FVector Posdiff; // velocity * delta t 
+	FVector VelmulDelta; // velocity * delta t 
 	FVector Angdiff; // AngularVel * delta t 
 };
 
@@ -49,8 +54,11 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
 	FString FeatureFile;
 
+	FVector PrevPos;
 	FVector PrevLinearVel;
-	FVector PrevRot;
+
+	//FVector PrevRot;
+	FQuat PrevQuat;
 	FVector PrevAngularVel;
 
 	int32 FileIndex;
@@ -58,10 +66,13 @@ private:
 	FTimerHandle FileWriteTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
-	float DeltaT;
+	float FileWriteDelay;
 
 	UPROPERTY(BlueprintAssignable, meta = (AllowPrivateAccess = true))
 	FOnFileWrite OnFileWrite;
+
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = true))
+	int32 DataIteration = -1;
 
 public:	
 	// Sets default values for this component's properties

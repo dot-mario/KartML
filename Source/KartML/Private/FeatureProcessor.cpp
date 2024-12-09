@@ -16,7 +16,7 @@ UFeatureProcessor::UFeatureProcessor()
 	FeatureFilePath = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Features"));
 	FeatureFilePath = FPaths::Combine(FeatureFilePath, TEXT("data0.csv"));
 
-	DeltaT = 0.5f;
+	FileWriteDelay = 0.1f;
 }
 
 // Called when the game starts
@@ -25,30 +25,15 @@ void UFeatureProcessor::BeginPlay()
 	Super::BeginPlay();
 	FeatureActor = GetOwner();
 
-	//if (!FPaths::DirectoryExists(FeatureFilePath))
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("Feature File Path invalid"));
-	//}
-	
+	// Set Filewrite timer
 	GetWorld()->GetTimerManager().SetTimer(FileWriteTimer, [this]()
 	{
-		WriteFeatures(DeltaT);
-	}, DeltaT, true);
+		WriteFeatures(FileWriteDelay);
+	}, FileWriteDelay, true);
 
 	GetWorld()->GetTimerManager().PauseTimer(FileWriteTimer);
 
 	OnFileWrite.AddDynamic(this, &UFeatureProcessor::OnFileWriteHandler);
-	//OnFileWrite.AddLambda([this]()
-	//{
-	//	bSaveFeatures = !bSaveFeatures;
-
-	//	if (bSaveFeatures)
-	//		GetWorld()->GetTimerManager().UnPauseTimer(FileWriteTimer);
-	//	else
-	//		GetWorld()->GetTimerManager().PauseTimer(FileWriteTimer);
-
-	//	UE_LOG(LogTemp, Warning, TEXT("FILEWRITE MODE: %d"), bSaveFeatures);
-	//});
 }
 
 // Called every frame
@@ -65,72 +50,102 @@ void UFeatureProcessor::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 void UFeatureProcessor::WriteFeatures(float DeltaTime)
 {
 	GetActorFeatures(DeltaTime);
-	SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
+	//SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
 }
 
 void UFeatureProcessor::GetActorFeatures(float DeltaTime)
 {
-	Features.LinearVel = FeatureActor->GetVelocity();
-	Features.LinearAcc = (Features.LinearVel - PrevLinearVel) / DeltaTime;
-	PrevLinearVel = Features.LinearVel;
+	// Euler rotation calc
+	//FRotator ActorRot = FeatureActor->GetActorRotation(); // Current rotation
+	//FVector CurRot = FVector(ActorRot.Roll, ActorRot.Pitch, ActorRot.Yaw);
+	//FVector CurAngularVel = (CurRot - PrevRot) / DeltaTime; // TODO ? 
+	//FVector CurAngularAcc = (CurAngularVel - PrevAngularVel) / DeltaTime;
 
-	FRotator ActorRot = FeatureActor->GetActorRotation(); // Current rotation
-	FVector CurRot = FVector(ActorRot.Roll, ActorRot.Pitch, ActorRot.Yaw);
+	// Quaternion rotation calc
+	FQuat CurQuat = FeatureActor->GetActorQuat();
+	FQuat DeltaQuat = CurQuat * PrevQuat.Inverse();
 	
-	FVector CurAngularVel = (CurRot - PrevRot) / DeltaTime;
-	PrevRot = CurRot;
+	FVector Axis;
+	float Angle;
+	DeltaQuat.ToAxisAndAngle(Axis, Angle);
 
+	FVector CurAngularVel = Axis * Angle / DeltaTime;
 	FVector CurAngularAcc = (CurAngularVel - PrevAngularVel) / DeltaTime;
-	PrevAngularVel = CurAngularVel;
 
+	FVector CurPos = FeatureActor->GetActorLocation();
+	FVector CurLinearVel = FeatureActor->GetVelocity();
+
+	// TODO: Ground truth i+1 frame에서 계산 후, i frame 데이터 이전으로 가서 write. 
+	++DataIteration;
+	if (DataIteration >= 1)
+	{
+		Features.GTruthPosDiff = CurPos - PrevPos;
+		Features.GTruthRotDiff = Axis * Angle;
+
+		SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
+	}
+
+	// Linear
+	Features.LinearVel = CurLinearVel;
+	Features.LinearAcc = (Features.LinearVel - PrevLinearVel) / DeltaTime;
+
+	// Rotation
 	Features.AngularVel = CurAngularVel;
 	Features.AngularAcc = CurAngularAcc;
 
-	Features.Posdiff = Features.LinearVel * DeltaTime;
-	Features.Anglediff = Features.AngularVel * DeltaTime;
+	// Delta
+	Features.VelmulDelta = Features.LinearVel * DeltaTime;
+	Features.AngvelmulDelta = Features.AngularVel * DeltaTime;
+
+	// Value update
+	PrevPos = CurPos;
+	PrevLinearVel = CurLinearVel;
+	//PrevRot = CurRot;
+	PrevQuat = CurQuat;
+	PrevAngularVel = CurAngularVel;
 }
 
 void UFeatureProcessor::SaveDataToCSV(const FString& FilePath, const FString& DataToWrite)
 {
-	if (!FPaths::FileExists(FilePath))
-	{
-		FString Header = TEXT("LinearVelocity,LinearAcceleration,AngularVelocity,AngularAccleration,PositionDiff,AngleDiff\n");
-		//FFileHelper::SaveStringArrayToFile()
-		FFileHelper::SaveStringToFile(Header, *FilePath);
-	}
+	//if (!FPaths::FileExists(FilePath))
+	//{
+	//	FString Header = TEXT("LinearVelocity,LinearAcceleration,AngularVelocity,AngularAccleration,PositionDiff,AngleDiff\n");
+	//	//FFileHelper::SaveStringArrayToFile()
+	//	FFileHelper::SaveStringToFile(Header, *FilePath);
+	//}
 
-	FFileHelper::SaveStringToFile(DataToWrite, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), EFileWrite::FILEWRITE_Append);
+	bool Result = FFileHelper::SaveStringToFile(DataToWrite, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), EFileWrite::FILEWRITE_Append);
+	if (Result)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *DataToWrite);
+	}
 }
 
 FString UFeatureProcessor::FormatFeaturesToCSV()
 {
-	FString DataRow = FString::Printf(TEXT("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n"),
+
+	FString DataRow = FString::Printf(TEXT("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,\n"),
 		Features.LinearVel.X,
 		Features.LinearVel.Y,
-		Features.LinearVel.Z,
-		
+
 		Features.LinearAcc.X,
 		Features.LinearAcc.Y,
-		Features.LinearAcc.Z,
-		
-		Features.AngularVel.X,
-		Features.AngularVel.Y,
+
 		Features.AngularVel.Z,
-		
-		Features.AngularAcc.X,
-		Features.AngularAcc.Y,
+
 		Features.AngularAcc.Z,
-		
-		Features.Posdiff.X,
-		Features.Posdiff.Y,
-		Features.Posdiff.Z,
-		
-		Features.Anglediff.X,
-		Features.Anglediff.Y,
-		Features.Anglediff.Z
+
+		Features.VelmulDelta.X,
+		Features.VelmulDelta.Y,
+
+		Features.AngvelmulDelta.Z,
+
+		Features.GTruthPosDiff.X,
+		Features.GTruthPosDiff.Y,
+
+		Features.GTruthRotDiff.Z
 		);
 
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *DataRow);
 	return DataRow;
 }
 
