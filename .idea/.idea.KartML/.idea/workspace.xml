@@ -13,7 +13,7 @@
   <component name="ChangeListManager">
     <list default="true" id="05756c56-d5e9-4f91-9a72-16366e065e74" name="변경" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.KartML/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.KartML/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Source/KartML/EasyVehicle/EasyVehicle.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/KartML/EasyVehicle/EasyVehicle.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Content/EasyVehicle/BP_EasyVehicle.uasset" beforeDir="false" afterPath="$PROJECT_DIR$/Content/EasyVehicle/BP_EasyVehicle.uasset" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -151,7 +151,7 @@
       <workItem from="1733649817978" duration="299000" />
       <workItem from="1733650541136" duration="236000" />
       <workItem from="1733650819674" duration="148000" />
-      <workItem from="1733651010369" duration="2525000" />
+      <workItem from="1733651010369" duration="4600000" />
     </task>
     <servers />
   </component>
