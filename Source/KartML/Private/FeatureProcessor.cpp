@@ -73,7 +73,7 @@ void UFeatureProcessor::GetActorFeatures(float DeltaTime)
 	FVector CurAngularAcc = (CurAngularVel - PrevAngularVel) / DeltaTime;
 
 	FVector CurPos = FeatureActor->GetActorLocation();
-	FVector CurLinearVel = FeatureActor->GetVelocity();
+	FVector CurLinearVel = FeatureActor->GetVelocity() * 0.01f;
 
 	// TODO: Ground truth i+1 frame에서 계산 후, i frame 데이터 이전으로 가서 write. 
 	++DataIteration;
@@ -123,12 +123,11 @@ void UFeatureProcessor::SaveDataToCSV(const FString& FilePath, const FString& Da
 
 FString UFeatureProcessor::FormatFeaturesToCSV()
 {
-
 	FString DataRow = FString::Printf(TEXT("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,\n"),
 		Features.LinearVel.X,
 		Features.LinearVel.Y,
 
-		Features.LinearAcc.X,
+		Features.LinearAcc.X,	
 		Features.LinearAcc.Y,
 
 		Features.AngularVel.Z,
@@ -146,6 +145,12 @@ FString UFeatureProcessor::FormatFeaturesToCSV()
 		Features.GTruthRotDiff.Z
 		);
 
+	//FString DataRow = FString::Printf(TEXT("%f,%f,%f\n"),
+	//	Features.AngularAcc.X,
+	//	Features.AngularAcc.Y,
+	//	Features.AngularAcc.Z
+	//);
+
 	return DataRow;
 }
 
@@ -156,7 +161,10 @@ void UFeatureProcessor::OnFileWriteHandler()
 	if (bSaveFeatures)
 		GetWorld()->GetTimerManager().UnPauseTimer(FileWriteTimer);
 	else
+	{
 		GetWorld()->GetTimerManager().PauseTimer(FileWriteTimer);
+		DataIteration = -1;
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("FILEWRITE MODE: %d"), bSaveFeatures);
 }
