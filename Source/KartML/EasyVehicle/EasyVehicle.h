@@ -12,10 +12,13 @@ class KARTML_API AEasyVehicle : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
-	AEasyVehicle();
+
+	AEasyVehicle(const FObjectInitializer& ObejctInitializer);
 
 protected:
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
+	class UEasyVehicleMovementComponent* VehicleMovementComponent;
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -27,6 +30,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
+	UPROPERTY(EditDefaultsOnly)
+	bool bDrawDebugBox = false;
 
 	TArray<FVector> LocalPositions;
 	UPROPERTY(Replicated)

@@ -1,14 +1,17 @@
 #include "EasyVehicle.h"
 #include "Net/UnrealNetwork.h"
+#include "EasyVehicleMovementComponent.h"
 #include "DrawDebugHelpers.h"
 
-// Sets default values
-AEasyVehicle::AEasyVehicle()
-{
-    // Set this character to call Tick() every frame.
+AEasyVehicle::AEasyVehicle(const FObjectInitializer& ObejctInitializer)
+    : Super(ObejctInitializer.SetDefaultSubobjectClass<UEasyVehicleMovementComponent>(ACharacter::CharacterMovementComponentName))
+{    // Set this character to call Tick() every frame.
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+
+    VehicleMovementComponent = Cast<UEasyVehicleMovementComponent>(GetCharacterMovement());
 }
+
 
 // Called when the game starts or when spawned
 void AEasyVehicle::BeginPlay()
@@ -24,10 +27,13 @@ void AEasyVehicle::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
     DOREPLIFETIME(AEasyVehicle, ServerRotations);
 }
 
+
 // Called every frame
 void AEasyVehicle::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+
+    if (!bDrawDebugBox) return;
 
     // Update local positions and rotations
     TimeSinceLastUpdate += DeltaTime;
