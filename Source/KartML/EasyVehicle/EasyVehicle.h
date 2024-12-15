@@ -40,4 +40,8 @@ public:
 
 	void DrawDebugPositions();
 
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bEnableDebug;
+
 };

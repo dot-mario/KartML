@@ -69,7 +69,8 @@ void AEasyVehicle::Tick(float DeltaTime)
     }
 
     // Visualize positions for debugging
-    DrawDebugPositions();
+    if(bEnableDebug)
+        DrawDebugPositions();
 }
 
 // Called to bind functionality to input

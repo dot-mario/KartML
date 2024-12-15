@@ -107,12 +107,12 @@ void UFeatureProcessor::GetActorFeatures(float DeltaTime)
 
 void UFeatureProcessor::SaveDataToCSV(const FString& FilePath, const FString& DataToWrite)
 {
-	//if (!FPaths::FileExists(FilePath))
-	//{
-	//	FString Header = TEXT("LinearVelocity,LinearAcceleration,AngularVelocity,AngularAccleration,PositionDiff,AngleDiff\n");
-	//	//FFileHelper::SaveStringArrayToFile()
-	//	FFileHelper::SaveStringToFile(Header, *FilePath);
-	//}
+	if (!FPaths::FileExists(FilePath))
+	{
+		FString Header = TEXT("LinearVel.X,LinearVel.Y,LinearAcc.X,LinearAcc.Y,AngularVel.Z,AngularAcc.Z,VelMulDelta.X,VelMulDelta.Y, Angvelmuldelta.Z,GTruthPosDiff.X,GTruthPosDiff.Y,GTruthRotDiff.Z,\n");
+		//FFileHelper::SaveStringArrayToFile()
+		FFileHelper::SaveStringToFile(Header, *FilePath);
+	}
 
 	bool Result = FFileHelper::SaveStringToFile(DataToWrite, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), EFileWrite::FILEWRITE_Append);
 	if (Result)
