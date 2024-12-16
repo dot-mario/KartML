@@ -38,10 +38,9 @@ class KARTML_API ANeuralHandler : public AActor
 public:
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UNNEModelData> PreloadedModelData;
-
 	TSharedPtr<FNeuralModelHelper> ModelHelper;
 
-public:	
+public:
 	// Sets default values for this actor's properties
 	ANeuralHandler();
 
@@ -52,5 +51,7 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	void Inference();
 
 };

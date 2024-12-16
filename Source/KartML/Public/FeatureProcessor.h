@@ -42,8 +42,13 @@ private:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = true))
 	AActor* FeatureActor;
 
+	/** Need to be true if you wanna  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	bool bSaveFeatures;
+
+	/** Need to be true if you wanna write features to csv file */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
+	bool bWriteFeaturesToFile;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FLearningData Features;
@@ -63,16 +68,19 @@ private:
 
 	int32 FileIndex;
 
-	FTimerHandle FileWriteTimer;
+	FTimerHandle FeatureWriteTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
-	float FileWriteDelay;
+	float FeatureUpdateDelay;
 
 	UPROPERTY(BlueprintAssignable, meta = (AllowPrivateAccess = true))
 	FOnFileWrite OnFileWrite;
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = true))
 	int32 DataIteration = -1;
+
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = true))
+	class ANeuralHandler* NeuralHandler;
 
 public:	
 	// Sets default values for this component's properties
@@ -90,11 +98,13 @@ protected:
 	//UFUNCTION(BlueprintCallable)
 	//void SwitchSaveFeatureBool() { bSaveFeatures = !bSaveFeatures; UE_LOG(LogTemp, Warning, TEXT("bSaveFeatures: %d"), bSaveFeatures); }
 
-	UFUNCTION(BlueprintCallable)
-	void WriteFeatures(float DeltaTime);
+	//UFUNCTION(BlueprintCallable)
+	//void WriteFeatures(float DeltaTime);
 
 	UFUNCTION(BlueprintCallable)
-	void GetActorFeatures(float DeltaTime = 0);
+	void UpdateFeatures(float DeltaTime);
+
+	void UpdateModelInputData();
 
 	UFUNCTION(BlueprintCallable)
 	void SaveDataToCSV(const FString& FilePath, const FString& DataToWrite);
@@ -107,4 +117,7 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void SwitchSaveFeatureMode();
+
+public:
+	bool SendInputFeatureToModel(TArray<float>& InputData);
 };

@@ -2,7 +2,7 @@
 
 
 #include "NeuralHandler.h"
-
+#include "FeatureProcessor.h"
 
 // Sets default values
 ANeuralHandler::ANeuralHandler()
@@ -35,7 +35,7 @@ void ANeuralHandler::BeginPlay()
 				UE::NNE::FSymbolicTensorShape SymbolicInputTensorShape = InputTensorDesc[0].GetShape(); // Symbolic shapes can have individual dimensions be set to -1. > Means model accepts any size for this dimension.
 				checkf(SymbolicInputTensorShape.IsConcrete(), TEXT("The current code supports only models without variable input tensor dimensions"))
 				TArray< UE::NNE::FTensorShape > InputTensorShapes = { UE::NNE::FTensorShape::MakeFromSymbolic(SymbolicInputTensorShape) }; // In case NN only supports static shapes. Create a concrete tensor shape from the symbolic shape
-				
+
 				ModelHelper->ModelInstance->SetInputTensorShapes(InputTensorShapes);
 
 				// Output
@@ -56,7 +56,6 @@ void ANeuralHandler::BeginPlay()
 				ModelHelper->OutputBindings[0].Data = ModelHelper->OutputData.GetData();
 				ModelHelper->OutputBindings[0].SizeInBytes = ModelHelper->OutputData.Num() * sizeof(float);
 			}
-
 			else
 			{
 				UE_LOG(LogTemp, Error, TEXT("Failed to create the model instance"));
@@ -72,14 +71,18 @@ void ANeuralHandler::BeginPlay()
 		UE_LOG(LogTemp, Error, TEXT("Cannot find runtime NNERuntimeORTCpu, please enable the corresponding plugin"))
 	}
 
-	
+	UE_LOG(LogTemp, Warning, TEXT("Input Tensor size: %d // Output tensor size: %d"), ModelHelper->InputData.Num(), ModelHelper->OutputData.Num());
 }
 
 // Called every frame
 void ANeuralHandler::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+}
 
+void ANeuralHandler::Inference()
+{
 	if (ModelHelper.IsValid())
 	{
 		// Example for async inference
@@ -90,16 +93,23 @@ void ANeuralHandler::Tick(float DeltaTime)
 
 			ModelHelper->bIsRunning = true;
 			TSharedPtr<FNeuralModelHelper> ModelHelperPtr = ModelHelper;
-			AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [ModelHelperPtr]()
+
+			AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [ModelHelperPtr]() // For synchronization
 				{
 					if (ModelHelperPtr->ModelInstance->RunSync(ModelHelperPtr->InputBindings, ModelHelperPtr->OutputBindings) == UE::NNE::IModelInstanceCPU::ERunSyncStatus::Fail)
 					{
 						UE_LOG(LogTemp, Error, TEXT("Failed to run the model"));
 					}
-					AsyncTask(ENamedThreads::GameThread, [ModelHelperPtr]()
-					{
-						ModelHelperPtr->bIsRunning = false;
-					});
+					AsyncTask(ENamedThreads::GameThread, [ModelHelperPtr]() // Result
+						{
+							ModelHelperPtr->bIsRunning = false;
+
+							const float GTruthPosDiffX = ModelHelperPtr->OutputData[0];
+							const float GTruthPosDiffY = ModelHelperPtr->OutputData[1];
+							const float GTruthRotDiffZ = ModelHelperPtr->OutputData[2];
+
+							UE_LOG(LogTemp, Warning, TEXT("Inference Result: %f, %f, %f"), GTruthPosDiffX, GTruthPosDiffY, GTruthRotDiffZ);
+						});
 				});
 		}
 	}

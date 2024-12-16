@@ -5,6 +5,8 @@
 #include "HAL\PlatformFileManager.h"
 #include "Misc\Paths.h"
 #include "TimerManager.h"
+#include "NeuralHandler.h"
+#include "Kismet\GameplayStatics.h"
 
 // Sets default values for this component's properties
 UFeatureProcessor::UFeatureProcessor()
@@ -16,7 +18,8 @@ UFeatureProcessor::UFeatureProcessor()
 	FeatureFilePath = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Features"));
 	FeatureFilePath = FPaths::Combine(FeatureFilePath, TEXT("data0.csv"));
 
-	FileWriteDelay = 0.1f;
+	FeatureUpdateDelay = 0.1f;
+	
 }
 
 // Called when the game starts
@@ -26,14 +29,18 @@ void UFeatureProcessor::BeginPlay()
 	FeatureActor = GetOwner();
 
 	// Set Filewrite timer
-	GetWorld()->GetTimerManager().SetTimer(FileWriteTimer, [this]()
+	GetWorld()->GetTimerManager().SetTimer(FeatureWriteTimer, [this]()
 	{
-		WriteFeatures(FileWriteDelay);
-	}, FileWriteDelay, true);
+		UpdateFeatures(FeatureUpdateDelay);
+	}, FeatureUpdateDelay, true);
 
-	GetWorld()->GetTimerManager().PauseTimer(FileWriteTimer);
+	if(bWriteFeaturesToFile) // Start timer immediately if false 
+		GetWorld()->GetTimerManager().PauseTimer(FeatureWriteTimer);
 
 	OnFileWrite.AddDynamic(this, &UFeatureProcessor::OnFileWriteHandler);
+
+	NeuralHandler = Cast<ANeuralHandler>(UGameplayStatics::GetActorOfClass(GetWorld(), ANeuralHandler::StaticClass()));
+	checkf(NeuralHandler, TEXT("Neural handler must be assigned"));
 }
 
 // Called every frame
@@ -43,17 +50,17 @@ void UFeatureProcessor::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 	//if (bSaveFeatures)
 	//{
-	//	WriteFeatures(DeltaTime);
+	//	UpdateFeatures(DeltaTime);
 	//}
 }
 
-void UFeatureProcessor::WriteFeatures(float DeltaTime)
-{
-	GetActorFeatures(DeltaTime);
-	//SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
-}
+//void UFeatureProcessor::WriteFeatures(float DeltaTime)
+//{
+//	UpdateFeatures(DeltaTime);
+//	//SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
+//}
 
-void UFeatureProcessor::GetActorFeatures(float DeltaTime)
+void UFeatureProcessor::UpdateFeatures(float DeltaTime)
 {
 	// Euler rotation calc
 	//FRotator ActorRot = FeatureActor->GetActorRotation(); // Current rotation
@@ -67,7 +74,7 @@ void UFeatureProcessor::GetActorFeatures(float DeltaTime)
 	
 	FVector Axis;
 	float Angle;
-	DeltaQuat.ToAxisAndAngle(Axis, Angle);
+	DeltaQuat.ToAxisAndAngle(Axis, Angle); 
 
 	FVector CurAngularVel = Axis * Angle / DeltaTime;
 	FVector CurAngularAcc = (CurAngularVel - PrevAngularVel) / DeltaTime;
@@ -82,7 +89,12 @@ void UFeatureProcessor::GetActorFeatures(float DeltaTime)
 		Features.GTruthPosDiff = CurPos - PrevPos;
 		Features.GTruthRotDiff = Axis * Angle;
 
-		SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
+		if(bWriteFeaturesToFile)
+			SaveDataToCSV(FeatureFilePath, FormatFeaturesToCSV());
+
+		// INFERENCE HERE
+		SendInputFeatureToModel(NeuralHandler->ModelHelper->InputData);
+		NeuralHandler->Inference();
 	}
 
 	// Linear
@@ -156,13 +168,15 @@ FString UFeatureProcessor::FormatFeaturesToCSV()
 
 void UFeatureProcessor::OnFileWriteHandler()
 {
+	if (!bWriteFeaturesToFile) return; // Function is not used when I don't wanna write features into file.
+
 	bSaveFeatures = !bSaveFeatures;
 
 	if (bSaveFeatures)
-		GetWorld()->GetTimerManager().UnPauseTimer(FileWriteTimer);
+		GetWorld()->GetTimerManager().UnPauseTimer(FeatureWriteTimer);
 	else
 	{
-		GetWorld()->GetTimerManager().PauseTimer(FileWriteTimer);
+		GetWorld()->GetTimerManager().PauseTimer(FeatureWriteTimer);
 		DataIteration = -1;
 	}
 
@@ -173,5 +187,25 @@ void UFeatureProcessor::SwitchSaveFeatureMode()
 {
 	if(OnFileWrite.IsBound())
 		OnFileWrite.Broadcast();
+}
+
+bool UFeatureProcessor::SendInputFeatureToModel(TArray<float>& InputData)
+{
+	if (DataIteration < 1) return false;
+
+	InputData[0] = Features.LinearVel.X;
+	InputData[1] = Features.LinearVel.Y;
+
+	InputData[2] = Features.LinearAcc.X;
+	InputData[3] = Features.LinearAcc.Y;
+
+	InputData[4] = Features.AngularVel.Z;
+	InputData[5] = Features.AngularAcc.Z;
+
+	InputData[6] = Features.VelmulDelta.X;
+	InputData[7] = Features.VelmulDelta.Y;
+	InputData[8] = Features.AngvelmulDelta.Z;
+
+	return true;
 }
 
