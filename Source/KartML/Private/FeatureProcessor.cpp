@@ -40,7 +40,7 @@ void UFeatureProcessor::BeginPlay()
 	OnFileWrite.AddDynamic(this, &UFeatureProcessor::OnFileWriteHandler);
 
 	NeuralHandler = Cast<ANeuralHandler>(UGameplayStatics::GetActorOfClass(GetWorld(), ANeuralHandler::StaticClass()));
-	checkf(NeuralHandler, TEXT("Neural handler must be assigned"));
+	checkf(NeuralHandler, TEXT("Neural handler must be assigned"));	
 }
 
 // Called every frame
@@ -80,7 +80,7 @@ void UFeatureProcessor::UpdateFeatures(float DeltaTime)
 	FVector CurAngularAcc = (CurAngularVel - PrevAngularVel) / DeltaTime;
 
 	FVector CurPos = FeatureActor->GetActorLocation();
-	FVector CurLinearVel = FeatureActor->GetVelocity() * 0.01f;
+	FVector CurLinearVel = FeatureActor->GetVelocity() * 0.01f; // to m/s
 
 	// TODO: Ground truth i+1 frame에서 계산 후, i frame 데이터 이전으로 가서 write. 
 	++DataIteration;

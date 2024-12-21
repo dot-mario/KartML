@@ -104,8 +104,6 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void UpdateFeatures(float DeltaTime);
 
-	void UpdateModelInputData();
-
 	UFUNCTION(BlueprintCallable)
 	void SaveDataToCSV(const FString& FilePath, const FString& DataToWrite);
 	
